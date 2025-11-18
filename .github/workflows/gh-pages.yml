@@ -1,0 +1,49 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests (optional)
+        if: ${{ always() }}
+        run: |
+          if [ -f package.json ] && grep -q "\"test\"" package.json; then
+            npm test || echo "Tests failed or not configured — continuing";
+          else
+            echo "No test script defined, skipping tests";
+          fi
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
+          # Optional: set user info for commit
+          commit_message: "ci(deploy): publish site from GitHub Actions"
